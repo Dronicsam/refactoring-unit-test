@@ -11,6 +11,9 @@
     "deploy": "gh-pages -d dist",
     "test-res": "jest reservationsCounter.test.js --watch"
   },
+  "jest": {
+    "testEnvironment": "jsdom"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/divinecharlotte/javascript-capstone.git"
