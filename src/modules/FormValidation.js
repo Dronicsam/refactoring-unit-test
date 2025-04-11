@@ -1,14 +1,13 @@
 class FormValidation {
-  validateText = (data) => {
-    const textRegex = /^[A-Za-z\s'-]+$/;
-    if (textRegex.test(data)) return 'OK';
+  validateName = (data) => {
+    const nameRegex = /^[A-Za-z\s'-]+$/;
+    if (nameRegex.test(data)) return true;
     return false;
   };
 
   validateDate = (data) => {
-    const dateRegex = /^\d{1,4}-\d{1,2}-\d{1,2}$/;
-
-    if (dateRegex.test(data)) return 'OK';
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (dateRegex.test(data)) return true;
     return false;
   };
 }
