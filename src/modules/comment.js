@@ -9,11 +9,13 @@ const doet = (b) => {
         newData[i].index = i;
       }
       const html = newData
-        .map((user) => `<div class='comments'>
+        .map(
+          (user) => `<div class='comments'>
            <p class='creation_date${user.index}'>${user.creation_date}</p>
            <p class='username'>${user.username}</p>
            <p class='comment'>${user.comment}</p>
-           </div>`)
+           </div>`,
+        )
         .join('');
       const html2 = `<form>
          <h3 class='form-title'>Add your comment</h3>
@@ -40,7 +42,7 @@ const doet = (b) => {
         });
       comment.insertAdjacentHTML('afterbegin', html);
       comment.insertAdjacentHTML('afterbegin', html2);
-      comment.style.disply = 'block';
+      comment.style.display = 'block';
       const submit = document.querySelector(`#submit${b}`);
       submit.addEventListener('click', (e) => {
         e.preventDefault();
