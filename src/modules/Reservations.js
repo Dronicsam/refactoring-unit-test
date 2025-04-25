@@ -6,7 +6,9 @@ class Reservations {
   }
 
   async apidata(dishName) {
-    const response = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${dishName}`);
+    const response = await fetch(
+      `https://www.themealdb.com/api/json/v1/1/search.php?s=${dishName}`,
+    );
 
     try {
       const data = await response.json();
@@ -33,6 +35,12 @@ class Reservations {
   };
 
   renderPopup(data) {
+    // Проверяем, есть ли данные
+    if (!data || !data.meals || data.meals.length === 0) {
+      console.error('No data available to render popup');
+      return;
+    }
+
     const res = data.meals[0];
 
     const id = res.idMeal;
@@ -43,43 +51,63 @@ class Reservations {
     const recipie = res.strSource;
 
     const popup = document.getElementById('reservation__data-content');
+
+    // Проверяем, существует ли элемент popup
+    if (!popup) {
+      console.error('Popup container not found in DOM');
+      return;
+    }
+
     this.removePopup();
 
     let html = `
-    <img src='${thumb}' alt="Image of ${name}">
-    <h2>${name}</h2>
-    <div id='resPopup--dish-description'>
-      <div class='rpdd-item'>
-        <p>Category:</p>
-        <p>${category}</p>
+      <img src='${thumb}' alt="Image of ${name}">
+      <h2>${name}</h2>
+      <div id='resPopup--dish-description'>
+        <div class='rpdd-item'>
+          <p>Category:</p>
+          <p>${category}</p>
+        </div>
+        <div class='rpdd-item'>
+          <p>Origin:</p>
+          <p>${area}</p>
+        </div>
+        <div class='rpdd-item'>
+          <a href='${recipie}' target="_blank">Recipie</a>
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </div>
       </div>
-      <div class='rpdd-item'>
-        <p>Origin:</p>
-        <p>${area}</p>
-      </div>
-      <div class='rpdd-item'>
-        <a href='${recipie}' target="_blank">Recipie</a>
-        <i class="fa-solid fa-arrow-up-right-from-square"></i>
-      </div>
-    </div>
     `;
+
+    // Добавляем форму
     html += this.AddShowRes.renderForm();
-    this.AddShowRes.getReservations(id);
+
+    // Вставляем HTML в popup
     popup.insertAdjacentHTML('afterbegin', html);
 
-    const form = document.getElementById('submit-reservation');
-    form.addEventListener('submit', (e) => {
-      const formData = new FormData(e.target);
+    // Загружаем существующие резервации
+    this.AddShowRes.renderReservations(id);
 
-      e.preventDefault();
-      this.AddShowRes.submitForm(formData, e.target, id);
-      form.reset();
-    });
+    // Добавляем обработчик для формы
+    const form = document.getElementById('submit-reservation');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        const formData = new FormData(e.target);
+
+        e.preventDefault();
+        this.AddShowRes.submitForm(formData, e.target, id);
+        form.reset();
+      });
+    } else {
+      console.error('Form not found in DOM');
+    }
   }
 
   openPopup = (e) => {
     document.body.classList.add('popup-open');
-    document.body.insertAdjacentHTML('afterbegin', `
+    document.body.insertAdjacentHTML(
+      'afterbegin',
+      `
     <div id='reservationPopup'>
       <div id='reservation-p__container'>
         <div id='reservation__container'>
@@ -90,7 +118,8 @@ class Reservations {
           </div>
       </div>
     </div>
-    `);
+    `,
+    );
 
     this.apidata(e.target.dataset.name);
     this.removePopup();
