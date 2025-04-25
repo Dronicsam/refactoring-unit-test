@@ -1,87 +1,106 @@
+import { API_URLS } from '../utils/config.js';
 import FormValidation from './FormValidation.js';
+import { handleError } from '../utils/errorHandler.js';
 
 class AddShowReservations {
-  link = 'https://us-central1-involvement-api.cloudfunctions.net/capstoneApi/apps/NeJSPpMrADKWN3Hg0NY2/reservations';
-
   constructor() {
+    this.link = API_URLS.reservations;
     this.validator = new FormValidation();
   }
 
-  renderForm = () => `<form id='submit-reservation'>
+  renderForm = () => `
+    <form id='submit-reservation'>
       <h3>Add a reservation</h3>
-      <div class="resPopupFormItem">
-        <input type='text' required name="name" placeholder='Your name'>
-      </div>
-      <div class="resPopupFormItem">
-        <input type='text' required name="res-popup-start-date" placeholder='Start date' onfocus="(this.type = 'date')">
-      </div>
-      <div class="resPopupFormItem">
-        <input type='text' required name="res-popup-end-date" placeholder='End date' onfocus="(this.type = 'date')">
-      </div>
+      ${this.createInput('name', 'Your name')}
+      ${this.createInput('res-popup-start-date', 'Start date')}
+      ${this.createInput('res-popup-end-date', 'End date')}
       <button type='submit'>Reserve</button>
     </form>
     <h3 class='reservations-list-header'>
-      Reservations
-      <span id="reservations-counter"></span>
+      Reservations <span id="reservations-counter"></span>
     </h3>
-    <div id='reservations-list'>
+    <div id='reservations-list'></div>
+  `;
+
+  createInput = (name, placeholder) => `
+      <div class="resPopupFormItem">
+        <input type='text' required name="${name}" placeholder='${placeholder}'>
       </div>
     `;
 
-  renderReservations = (data) => {
+  async fetchReservations(id) {
+    try {
+      const response = await fetch(`${this.link}?item_id=${id}`);
+      if (!response.ok) throw new Error(response.statusText);
+      return await response.json();
+    } catch (e) {
+      handleError(e);
+      return [];
+    }
+  }
+
+  async renderReservations(id) {
+    const data = await this.fetchReservations(id);
     const list = document.getElementById('reservations-list');
-    let html = `
-    `;
+    list.innerHTML = data
+      .reverse()
+      .map(
+        (el) => `
+        <div class="reservation-list-item">
+          <strong>${el.date_start}</strong> - <strong>${el.date_end}</strong> by <strong>${el.username}</strong>
+        </div>
+      `,
+      )
+      .join('');
+    this.updateReservationsCounter(data.length);
+  }
 
-    data.reverse().forEach((el) => {
-      html += `
-      <div class="reservation-list-item">
-        <strong>${el.date_start}</strong> - <strong>${el.date_end}</strong> by <strong>${el.username}</strong>
-      </div>
-        `;
-    });
-    list.insertAdjacentHTML('afterbegin', html);
-  };
-
-  async reservationsCounter(id) {
+  updateReservationsCounter = (count) => {
     const counter = document.getElementById('reservations-counter');
+    counter.textContent = `(${count})`;
+  };
 
-    try {
-      const response = await fetch(`${this.link}?item_id=${id}`, { method: 'get' });
+  async submitForm(data, formElement, id) {
+    const name = data.get('name');
+    const start = data.get('res-popup-start-date');
+    const end = data.get('res-popup-end-date');
 
-      const data = await response.json();
-      counter.textContent = `(${data.length})`;
-      return data;
-    } catch (e) {
-      return null;
+    if (
+      !this.validator.validateName(name)
+      || !this.validator.validateDate(start)
+      || !this.validator.validateDate(end)
+    ) {
+      this.showFormError(formElement, 'Invalid values');
+      return false;
     }
+
+    this.clearFormError();
+    await this.sendData({
+      id,
+      name,
+      start,
+      end,
+    });
+    return true;
   }
 
-  async getReservations(id) {
-    try {
-      const response = await fetch(`${this.link}?item_id=${id}`, { method: 'get' });
-      if (!response.ok) {
-        throw new Error(response.statusText);
-      } else {
-        const data = await response.json();
-        this.renderReservations(data);
-        this.reservationsCounter(id);
-      }
-    } catch (e) {
-      throw Error(e);
-    }
-  }
-
-  invalidFormData = (form) => {
+  showFormError = (form, message) => {
     if (!document.getElementById('reservationFormErr')) {
-      form.insertAdjacentHTML('afterend', `<div id="reservationFormErr">Invalid values</div>
-      `);
+      form.insertAdjacentHTML(
+        'afterend',
+        `<div id="reservationFormErr">${message}</div>`,
+      );
     }
   };
 
-  async sendData({
+  clearFormError = () => {
+    const formErr = document.getElementById('reservationFormErr');
+    if (formErr) formErr.remove();
+  };
+
+  sendData = async ({
     id, name, start, end,
-  }) {
+  }) => {
     const dataJson = {
       item_id: id,
       username: name,
@@ -90,46 +109,21 @@ class AddShowReservations {
     };
 
     try {
-      const response = await fetch(`${this.link}`, {
+      const response = await fetch(this.link, {
         method: 'POST',
         body: JSON.stringify(dataJson),
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
-      if (response.status === 201) {
-        this.renderReservations([dataJson]);
-        this.reservationsCounter(id);
+
+      const HTTP_STATUS_CREATED = 201;
+
+      if (response.status === HTTP_STATUS_CREATED) {
+        this.renderReservations(id);
       }
     } catch (e) {
-      throw Error(e);
+      handleError(e);
     }
-  }
-
-  submitForm(data, formElement, id) {
-    const name = data.get('name');
-    const start = data.get('res-popup-start-date');
-    const end = data.get('res-popup-end-date');
-
-    if (!this.validator.validateText(name)
-      || !this.validator.validateDate(start)
-      || !this.validator.validateDate(end)) {
-      this.invalidFormData(formElement);
-      return false;
-    }
-
-    const formErr = document.getElementById('reservationFormErr');
-    if (formErr !== null) {
-      formErr.remove();
-    }
-
-    this.sendData({
-      id, name, start, end,
-    });
-
-    return 1;
-  }
+  };
 }
 
 export default AddShowReservations;
